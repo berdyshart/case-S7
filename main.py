@@ -2,34 +2,30 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def volatility():
-    global DF
-    df = DF.copy()
+def volatility_of_price_fun(df):
+    df = df.copy()
     price_volatility = df.groupby('product_category')['price'].std() / df.groupby('product_category')['price'].mean()
     return price_volatility
 
 
-def lead_time():
-    global DF
-    df = DF.copy()
-    # df.reset_index(inplace=True)
+def lead_time_fun(df):
+    df = df.copy()
     df['lead_time'] = (df['delivery_date'] - df['order_date']).dt.days
     avg_lead_time = df.groupby('product_category')['lead_time'].mean()
     return avg_lead_time
 
 
-def fillrate():
-    global DF
-    df = DF.copy()
+def fillrate_fun(df):
+    df = df.copy()
     delivery_relatability = df.groupby('product_category')['valid_delivered_qty'].mean() / df.groupby('product_category')['qty'].mean()
     return delivery_relatability
 
 
-def season():
-    global DF
-    df = DF.copy()
+def seasonality_fun(df):
+    df = df.copy()
     df.set_index('order_date', inplace=True)
     seasonality = df.groupby('product_category')['price'].resample('ME').count().unstack(level=0)
+
     seasonality.plot(figsize=(12, 6), marker='o')
     plt.title('Сезонность закупок по категориям (объем закупок по месяцам)')
     plt.xlabel('Дата')
@@ -39,12 +35,12 @@ def season():
     plt.show()
 
 
-def consup():
-    global DF_consump
-    df = DF_consump.copy()
+def consumption_fun(df_consumption):
+    df = df_consumption.copy()
     df.set_index('consumtion_date', inplace=True)
-    comsuption = df.groupby('product_category')['qty'].resample('ME').count().unstack(level=0)
-    comsuption.plot(figsize=(12, 6), marker='o')
+    consumption = df.groupby('product_category')['qty'].resample('ME').count().unstack(level=0)
+
+    consumption.plot(figsize=(12, 6), marker='o')
     plt.title('Сезонность потребления по категориям (qty по месяцам)')
     plt.xlabel('Дата')
     plt.ylabel('Количество потребленное')
@@ -53,7 +49,7 @@ def consup():
     plt.show()
 
 
-def abc_analisys():
+def abc_analysis_by_year(df):
     result = []
 
     def classify_abc(percentage):
@@ -64,10 +60,10 @@ def abc_analisys():
         else:
             return 'C'
 
-    global DF
-    DF['year'] = DF['order_date'].dt.year
-    abc_df_temp = DF.groupby(['year', 'product_category'])['amount'].sum().reset_index()
-    years = sorted(DF['year'].unique())
+
+    df['year'] = df['order_date'].dt.year
+    abc_df_temp = df.groupby(['year', 'product_category'])['amount'].sum().reset_index()
+    years = sorted(df['year'].unique())
 
     for year in years:
         abc_df = abc_df_temp[abc_df_temp['year'] == year]
@@ -80,20 +76,20 @@ def abc_analisys():
 
         result.append(abc_df)
         abc_df = abc_df_temp[abc_df_temp['year'] == year]
+
     return result
 
 
-def xyz_analisys():
-    global DF_consump
-    DF_consump['year'] = DF_consump['consumtion_date'].dt.year
-    years = sorted(DF_consump['year'].unique())
+def xyz_analisis_by_year(df_consumption):
+    df_consumption['year'] = df_consumption['consumtion_date'].dt.year
+    years = sorted(df_consumption['year'].unique())
     result = []
 
     for year in years:
-        DF_consump_local = DF_consump[DF_consump['year'] == year]
-        xyz_matrix = DF_consump_local.pivot_table(
+        df_consumption_local = df_consumption[df_consumption['year'] == year]
+        xyz_matrix = df_consumption_local.pivot_table(
             index='product_category',
-            columns=DF_consump_local['consumtion_date'].dt.to_period('M'),
+            columns=df_consumption_local['consumtion_date'].dt.to_period('M'),
             values='qty',
             aggfunc='sum'
         ).fillna(0)
@@ -108,29 +104,20 @@ def xyz_analisys():
                                      labels=['X', 'Y', 'Z'])
 
         result.append(xyz_df)
+
     return result
 
 
-# импорт данных
-DF = pd.read_excel('C:\\Users\\berdy\\OneDrive\\Рабочий стол\\final_orders_train.csv.xlsx')
-DF['order_date'] = pd.to_datetime(DF['order_date'])
-DF['delivery_date'] = pd.to_datetime(DF['delivery_date'])
-DF = DF[DF['qty'] > 0]
-DF = DF.dropna(subset=['qty', 'product_category'])
+def main():
+    # импорт данных
+    df = pd.read_excel('C:\\Users\\berdy\\OneDrive\\Рабочий стол\\final_orders_train.csv.xlsx')
+    df['order_date'] = pd.to_datetime(df['order_date'])
+    df['delivery_date'] = pd.to_datetime(df['delivery_date'])
+    df = df[df['qty'] > 0].dropna(subset=['qty', 'product_category'])
 
-DF_consump = pd.read_excel('C:\\Users\\berdy\\OneDrive\\Рабочий стол\\final_consumtion_train.csv.xlsx')
-DF_consump['consumtion_date'] = pd.to_datetime(DF_consump['consumtion_date'])
-
-DF_consump = DF_consump[DF_consump['qty'] > 0]
-DF_consump = DF_consump.dropna(subset=['qty', 'product_category', 'consumtion_date'])
-
-# print(abc_analisys())
-# print(xyz_analisys())
-# print(season())
-
-abc_by_year = xyz_analisys()
-for abc_df in abc_by_year:
-    print(abc_df)
+    df_consumption = pd.read_excel('C:\\Users\\berdy\\OneDrive\\Рабочий стол\\final_consumtion_train.csv.xlsx')
+    df_consumption['consumtion_date'] = pd.to_datetime(df_consumption['consumtion_date'])
+    df_consumption = df_consumption[df_consumption['qty'] > 0].dropna(subset=['qty', 'product_category', 'consumtion_date'])
 
 
-
+main()
