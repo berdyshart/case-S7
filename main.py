@@ -125,10 +125,11 @@ def xyz_analisis_by_year(df_consumption):
     return result
 
 
-def prices(df):
+def prices(df, category = -1):
     df = df.copy()
     # убрать первую категорию, слишком большие числа
-    # df = df[df['product_category'] != 1]
+    if category != -1:
+        df = df[df['product_category'] == category]
     df.set_index('order_date', inplace=True)
     df = df.groupby('product_category')['price'].resample('ME').mean().unstack(level=0)
 
@@ -146,6 +147,6 @@ def main():
     df_consumption['consumtion_date'] = pd.to_datetime(df_consumption['consumtion_date'])
     df_consumption = df_consumption[df_consumption['qty'] > 0].dropna(subset=['qty', 'product_category', 'consumtion_date'])
 
-    graph(prices(df), "Средние цены на категории по месяцам", "День", "Цена", "Категории")
+    graph(prices(df, 0), "Средние цены на категории по месяцам без 1 категории", "Месяц", "Цена", "Категории")
 
 main()
