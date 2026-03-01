@@ -1,9 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from unicodedata import category
 
 
-def graph(obj, plt_title="no title", plt_xlabel="no label", plt_ylabel="no label", plt_legend="no legend"):
-    obj.plot(figsize=(12, 6), marker='o')
+def graph(obj, plt_title="no title", plt_xlabel="D", plt_ylabel="qty", plt_legend="category"):
+    obj.plot(figsize=(12, 6), marker='o', markersize = 2, linestyle='')
     plt.title(plt_title)
     plt.xlabel(plt_xlabel)
     plt.ylabel(plt_ylabel)
@@ -20,13 +21,23 @@ def volatility_of_price_fun(df):
 
 def lead_time_fun(df):
     df = df.copy()
+    df = df[df['product_category'] == 2]
     df['lead_time'] = (df['delivery_date'] - df['order_date']).dt.days
     avg_lead_time = df.groupby('product_category')['lead_time'].mean()
     return avg_lead_time
 
 
+def std_lead_time_fun(df):
+    df = df.copy()
+    df = df[df['product_category'] == 2]
+    df['lead_time'] = (df['delivery_date'] - df['order_date']).dt.days
+    std_lead_time = df.groupby('product_category')['lead_time'].std()
+    return std_lead_time
+
+
 def fillrate_fun(df):
     df = df.copy()
+    df = df[df['product_category'] == 2]
     delivery_relatability = df.groupby('product_category')['valid_delivered_qty'].mean() / df.groupby('product_category')['qty'].mean()
     return delivery_relatability
 
@@ -36,19 +47,26 @@ def seasonality_fun(df):
     df.set_index('order_date', inplace=True)
     seasonality = df.groupby('product_category')['qty'].resample('ME').count().unstack(level=0)
 
+    return seasonality
 
-def consumption_fun(df_consumption):
+
+def consumption_fun(df_consumption, category=-1):
     df = df_consumption.copy()
     df.set_index('consumtion_date', inplace=True)
-    consumption = df.groupby('product_category')['qty'].resample('ME').count().unstack(level=0)
+    if category != -1:
+        df = df[df['product_category'] == category]
+    consumption = df.groupby('product_category')['qty'].resample('D').sum().unstack(level=0)
 
-    consumption.plot(figsize=(12, 6), marker='o')
-    plt.title('Сезонность потребления по категориям (qty по месяцам)')
-    plt.xlabel('Дата')
-    plt.ylabel('Количество потребленное')
-    plt.grid(True)
-    plt.legend(title='Категории')
-    plt.show()
+    return consumption
+
+
+def consumption_average_fun(df_consumption):
+    df = df_consumption.copy()
+    df = df[df['product_category'] == 0]
+    df.set_index('order_date', inplace=True)
+    consumption_average = df.groupby('product_category')['qty'].mean()
+
+    return consumption_average
 
 
 def consumption_fun_for_cat1(df_consumption):
@@ -127,13 +145,23 @@ def xyz_analisis_by_year(df_consumption):
 
 def prices(df, category = -1):
     df = df.copy()
-    # убрать первую категорию, слишком большие числа
+    df.set_index('order_date', inplace=True)
     if category != -1:
         df = df[df['product_category'] == category]
-    df.set_index('order_date', inplace=True)
-    df = df.groupby('product_category')['price'].resample('ME').mean().unstack(level=0)
+    prices = df.groupby('product_category')['price'].resample(
+        'D').mean().unstack(level=0)
 
-    return df
+    return prices
+
+
+def zero_point_percentage(df_consumption):
+    '''
+    Function, calculating the percentage of zero points in data frame
+    :param df_consumption:
+    :return:
+    '''
+    df = df_consumption.copy()
+
 
 
 def main():
@@ -147,6 +175,9 @@ def main():
     df_consumption['consumtion_date'] = pd.to_datetime(df_consumption['consumtion_date'])
     df_consumption = df_consumption[df_consumption['qty'] > 0].dropna(subset=['qty', 'product_category', 'consumtion_date'])
 
-    graph(prices(df, 0), "Средние цены на категории по месяцам без 1 категории", "Месяц", "Цена", "Категории")
+    # for category in [0, 1, 2, 3, 4]:
+    # # graph(consumption_fun(df_consumption, category = category), plt_title=f"Потребление для категории {category}", plt_xlabel="D")
+    #     graph(prices(df, category = category), plt_title=f"Цены категории {category}", plt_xlabel="D", plt_ylabel="Price")
+    print(lead_time_fun(df), std_lead_time_fun(df), fillrate_fun(df))
 
 main()
